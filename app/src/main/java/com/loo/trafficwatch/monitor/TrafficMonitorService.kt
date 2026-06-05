@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.loo.trafficwatch.MainActivity
+import com.loo.trafficwatch.R
 import com.loo.trafficwatch.data.SettingsRepository
 import com.loo.trafficwatch.data.TrafficDatabase
 import com.loo.trafficwatch.widget.TrafficWidgetProvider
@@ -103,8 +104,8 @@ class TrafficMonitorService : Service() {
 
     private fun buildNotification(text: String): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_upload_done)
-            .setContentTitle("流量观察监测中")
+            .setSmallIcon(R.drawable.ic_stat_traffic)
+            .setContentTitle("Traffic Monitoring")
             .setContentText(text)
             .setContentIntent(openAppPendingIntent())
             .setOngoing(true)

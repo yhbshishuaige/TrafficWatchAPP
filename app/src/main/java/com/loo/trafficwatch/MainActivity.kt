@@ -517,13 +517,37 @@ private fun AppSeriesPanel(
         }
     }
 
-    LineChart(
-        points = points,
-        modifier = Modifier.fillMaxWidth(),
-        unitLabel = "${row.label} 流量",
-        style = TimeChartStyle.BARS,
-    )
-    TrendFooter("横坐标为真实采样时间，按小时聚合")
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "${row.label} 流量趋势",
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "真实采样时间 · 按小时聚合",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(
+                text = selectedRange.title,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        LineChart(
+            points = points,
+            modifier = Modifier.fillMaxWidth(),
+            unitLabel = "${row.label} 流量",
+            style = TimeChartStyle.BARS,
+            showUnitLabel = false,
+            framed = false,
+        )
+    }
 }
 
 @Composable

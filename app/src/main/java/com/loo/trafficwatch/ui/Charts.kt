@@ -72,6 +72,8 @@ fun LineChart(
     modifier: Modifier = Modifier,
     unitLabel: String = "蜂窝流量",
     style: TimeChartStyle = TimeChartStyle.LINE,
+    showUnitLabel: Boolean = true,
+    framed: Boolean = true,
 ) {
     val chartKey = points.joinToString("|") { "${it.bucketStartMillis}:${it.totalBytes}" }
     var revealTarget by remember(chartKey) { mutableFloatStateOf(0f) }
@@ -83,12 +85,12 @@ fun LineChart(
         animationSpec = tween(520),
         label = "line-reveal",
     )
-    ChartFrame(modifier = modifier.height(230.dp), empty = points.isEmpty()) {
+    val chartContent: @Composable () -> Unit = {
         Canvas(Modifier.fillMaxSize().padding(12.dp)) {
             val maxValue = niceMax(points.maxOfOrNull { it.totalBytes } ?: 1L).toFloat()
             val left = 70f
             val right = size.width - 14f
-            val top = 26f
+            val top = if (showUnitLabel) 26f else 16f
             val bottom = size.height - 42f
             val plotWidth = (right - left).coerceAtLeast(1f)
             val plotHeight = (bottom - top).coerceAtLeast(1f)
@@ -103,7 +105,9 @@ fun LineChart(
             val axisColor = Color(0xFFBCC4BD)
             val gridColor = Color(0xFFE6EAE3)
 
-            drawContext.canvas.nativeCanvas.drawText(unitLabel, left, 18f, labelPaint)
+            if (showUnitLabel) {
+                drawContext.canvas.nativeCanvas.drawText(unitLabel, left, 18f, labelPaint)
+            }
 
             val gridCount = 4
             repeat(gridCount + 1) { step ->
@@ -194,6 +198,21 @@ fun LineChart(
                         center = Offset(x, yFor(point.totalBytes)),
                     )
                 }
+            }
+        }
+    }
+    if (framed) {
+        ChartFrame(modifier = modifier.height(230.dp), empty = points.isEmpty(), content = chartContent)
+    } else {
+        Box(modifier = modifier.height(230.dp), contentAlignment = Alignment.Center) {
+            if (points.isEmpty()) {
+                Text(
+                    text = "暂无数据",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                )
+            } else {
+                chartContent()
             }
         }
     }

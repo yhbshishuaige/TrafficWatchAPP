@@ -1,6 +1,7 @@
 .gradle/
 .kotlin/
 .idea/
+.vscode/
 build/
 local.properties
 signing.properties
