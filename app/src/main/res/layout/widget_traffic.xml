@@ -5,13 +5,13 @@
     android:background="@drawable/widget_background"
     android:gravity="center_vertical"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/widget_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="今日流量"
+        android:text="Today usage"
         android:textColor="#5B6165"
         android:textSize="13sp" />
 
@@ -19,16 +19,16 @@
         android:id="@+id/widget_today_value"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="5dp"
         android:text="0B"
         android:textColor="#1E2326"
-        android:textSize="24sp"
+        android:textSize="28sp"
         android:textStyle="bold" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -37,17 +37,17 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="已暂停"
+            android:text="Paused"
             android:textColor="#1B7F79"
             android:textSize="13sp" />
 
         <TextView
             android:id="@+id/widget_toggle"
-            android:layout_width="56dp"
-            android:layout_height="34dp"
+            android:layout_width="72dp"
+            android:layout_height="36dp"
             android:background="@drawable/widget_toggle_background"
             android:gravity="center"
-            android:text="开启"
+            android:text="Start"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold" />

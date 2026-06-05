@@ -56,8 +56,8 @@ class TrafficWidgetProvider : AppWidgetProvider() {
         private fun buildViews(context: Context, enabled: Boolean, todayBytes: Long): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_traffic)
             views.setTextViewText(R.id.widget_today_value, formatBytes(todayBytes))
-            views.setTextViewText(R.id.widget_status, if (enabled) "监测中" else "已暂停")
-            views.setTextViewText(R.id.widget_toggle, if (enabled) "关闭" else "开启")
+            views.setTextViewText(R.id.widget_status, if (enabled) "Monitoring" else "Paused")
+            views.setTextViewText(R.id.widget_toggle, if (enabled) "Stop" else "Start")
             views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
             views.setOnClickPendingIntent(R.id.widget_toggle, toggleIntent(context))
             return views
