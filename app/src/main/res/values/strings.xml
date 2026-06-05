@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">流量观察</string>
-    <string name="widget_description">显示今日流量并控制监测开关</string>
+    <string name="app_name">Traffic Monitoring</string>
+    <string name="widget_description">Show today usage and monitoring switch</string>
 </resources>
