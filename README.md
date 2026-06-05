@@ -4,34 +4,66 @@
 但上个月出来实习，到了新的城市，在月中的时候通用流量就用
 完了，虽然后面意识到了导出蹭wifi，但是上个月的话费也是飙升到了惊人的109元🤦‍♂️(第一个月的实习生有多穷懂得都懂)，我急于想弄清楚各个app消耗流量的情况，然后对症下药，于是这个专门监测流量使用的app TrafficWatch就诞生了
 
-![](./img/logo.png)
+<p align="center">
+  <img src="./img/logo.png" width="160" alt="TrafficWatch Logo">
+</p>
 
 - 安卓14可以稳定运行，不支持ios系统
 
 ## 主要功能
 
 - 记录最近一小时的流量使用情况(精确到分钟)
-![](./img/H.jpg)
+
+<p align="center">
+  <a href="./img/H.jpg">
+    <img src="./img/H.jpg" width="320" alt="最近一小时流量统计">
+  </a>
+</p>
 
 - 记录最近一个月的使用情况(精确到小时)
-![](./img/W.jpg)
+
+<p align="center">
+  <a href="./img/W.jpg">
+    <img src="./img/W.jpg" width="320" alt="最近一个月流量统计">
+  </a>
+</p>
 
 - 记录最近一年的使用情况(精确到月)
     - 每个app都有单独的树状图记录
-![](./img/Y.jpg)
+
+<p align="center">
+  <a href="./img/Y.jpg">
+    <img src="./img/Y.jpg" width="320" alt="最近一年流量统计">
+  </a>
+</p>
 
 - 直观展示不同app的流量使用情况
-![](./img/bilibili.jpg)
+
+<p align="center">
+  <a href="./img/bilibili.jpg">
+    <img src="./img/bilibili.jpg" width="320" alt="单个应用流量统计">
+  </a>
+</p>
 
 - 支持记录热点的流量消耗
-![](./img/all_app.jpg)
+
+<p align="center">
+  <a href="./img/all_app.jpg">
+    <img src="./img/all_app.jpg" width="320" alt="全部应用流量统计">
+  </a>
+</p>
 
 - 支持双卡流量卡监测
 
 - 支持wifi和流量同时开着进行监测
 
 - 支持小组件功能，可以在后台稳定运行
-![](./img/widgit.jpg)
+
+<p align="center">
+  <a href="./img/widget.jpg">
+    <img src="./img/widget.jpg" width="320" alt="桌面小组件">
+  </a>
+</p>
 
 - 固定签名，对app进行更新，旧数据不会消失，可以继续使用
 
