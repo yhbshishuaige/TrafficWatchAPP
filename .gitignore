@@ -1,0 +1,11 @@
+.gradle/
+.idea/
+build/
+local.properties
+signing.properties
+.signing/
+.gdb_history
+*.apk
+*.aab
+*.iml
+captures/

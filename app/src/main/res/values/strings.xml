@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">流量观察</string>
+    <string name="widget_description">显示今日流量并控制监测开关</string>
+</resources>
