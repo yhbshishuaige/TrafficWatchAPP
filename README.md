@@ -102,8 +102,8 @@
 - 增加一个简洁开屏动画
 
 <p align="center">
-  <a href="./img/opening.jpg">
-    <img src="./img/opening.jpg" width="320" alt="开屏动画">
+  <a href="./img/opening.gif">
+    <img src="./img/opening.gif" width="320" alt="开屏动画">
   </a>
 </p>
 
