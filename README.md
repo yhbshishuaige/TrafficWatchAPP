@@ -70,7 +70,7 @@
 ## 使用方法
 
 1. 下载apk即可
-    - 下载链接：[点这里](https://github.com/yhbshishuaige/TrafficWatchAPP/releases/tag/v1.1.3)
+    - 下载链接：[点这里](https://github.com/yhbshishuaige/TrafficWatchAPP/releases/)
 
 2. 在文件管理器中安装
 
