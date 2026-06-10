@@ -50,6 +50,20 @@ data class SeriesPoint(
     val totalBytes: Long get() = rxBytes + txBytes
 }
 
+enum class TrafficLogLevel {
+    INFO,
+    SUCCESS,
+    WARNING,
+    ERROR,
+}
+
+data class TrafficLogEntry(
+    val id: Long,
+    val timestampMillis: Long,
+    val level: TrafficLogLevel,
+    val message: String,
+)
+
 data class DashboardStats(
     val todayBytes: Long = 0L,
     val monthBytes: Long = 0L,

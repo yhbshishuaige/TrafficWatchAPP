@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Traffic Monitoring</string>
-    <string name="widget_description">Show today usage and monitoring switch</string>
+    <string name="widget_description">Show traffic usage, month share, and monitoring switch</string>
 </resources>

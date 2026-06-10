@@ -30,10 +30,10 @@ class NetworkStatsReader(private val context: Context) {
                 startMillis,
                 endMillis,
             )
-        } catch (_: SecurityException) {
-            return emptyList()
-        } catch (_: RuntimeException) {
-            return emptyList()
+        } catch (error: SecurityException) {
+            throw IllegalStateException("读取系统流量统计被拒绝", error)
+        } catch (error: RuntimeException) {
+            throw IllegalStateException("系统流量统计暂不可用", error)
         }
 
         return stats.useBuckets { bucket ->

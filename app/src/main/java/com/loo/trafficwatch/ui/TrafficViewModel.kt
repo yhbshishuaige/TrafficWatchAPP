@@ -5,16 +5,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.loo.trafficwatch.data.DashboardStats
 import com.loo.trafficwatch.data.SeriesPoint
 import com.loo.trafficwatch.data.SettingsRepository
 import com.loo.trafficwatch.data.SimProfile
 import com.loo.trafficwatch.data.TrafficDatabase
+import com.loo.trafficwatch.data.TrafficLogEntry
+import com.loo.trafficwatch.data.TrafficLogLevel
 import com.loo.trafficwatch.data.UsageRow
 import com.loo.trafficwatch.monitor.PermissionUtils
+import com.loo.trafficwatch.monitor.SampleSource
 import com.loo.trafficwatch.monitor.SubscriptionResolver
 import com.loo.trafficwatch.monitor.TrafficMonitorService
+import com.loo.trafficwatch.monitor.TrafficSampler
 import com.loo.trafficwatch.widget.TrafficWidgetProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -32,6 +40,8 @@ data class TrafficUiState(
     val lastHour: List<SeriesPoint> = emptyList(),
     val lastWeek: List<SeriesPoint> = emptyList(),
     val monthly: List<SeriesPoint> = emptyList(),
+    val logs: List<TrafficLogEntry> = emptyList(),
+    val isRefreshing: Boolean = false,
 )
 
 class TrafficViewModel(application: Application) : AndroidViewModel(application) {
@@ -39,6 +49,7 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
     private val settings = SettingsRepository(application)
     private val database = TrafficDatabase(application)
     private val subscriptionResolver = SubscriptionResolver(application, settings)
+    private val sampler = TrafficSampler(application)
 
     var uiState by mutableStateOf(TrafficUiState())
         private set
@@ -51,6 +62,26 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun refresh() {
+        loadState()
+    }
+
+    fun manualRefresh() {
+        if (uiState.isRefreshing) return
+        uiState = uiState.copy(isRefreshing = true)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                sampler.sampleNow(
+                    source = SampleSource.MANUAL,
+                    requireMonitoringEnabled = false,
+                    writeSuccessLog = true,
+                )
+            }
+            TrafficWidgetProvider.refresh(app)
+            loadState(isRefreshing = false)
+        }
+    }
+
+    private fun loadState(isRefreshing: Boolean = uiState.isRefreshing) {
         val now = System.currentTimeMillis()
         val zone = ZoneId.systemDefault()
         val monthStart = LocalDate.now(zone).withDayOfMonth(1).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -72,6 +103,8 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
             lastHour = database.series(hourAgo, now, ONE_MINUTE),
             lastWeek = database.series(weekAgo, now, ONE_HOUR),
             monthly = database.monthlySeries(yearStart, now),
+            logs = database.recentLogs(),
+            isRefreshing = isRefreshing,
         )
     }
 
@@ -98,6 +131,7 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearAllData() {
         database.clearAll()
+        database.insertLog(TrafficLogLevel.INFO, "已清空本地流量记录")
         TrafficWidgetProvider.refresh(app)
         refresh()
     }
@@ -114,6 +148,7 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun onCleared() {
+        sampler.close()
         database.close()
         super.onCleared()
     }

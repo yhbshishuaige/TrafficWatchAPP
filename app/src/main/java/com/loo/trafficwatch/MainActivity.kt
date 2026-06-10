@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,6 +61,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -93,6 +95,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.loo.trafficwatch.data.SimProfile
 import com.loo.trafficwatch.data.TrafficCategory
+import com.loo.trafficwatch.data.TrafficLogEntry
+import com.loo.trafficwatch.data.TrafficLogLevel
 import com.loo.trafficwatch.data.UsageRow
 import com.loo.trafficwatch.ui.AppSeriesRange
 import com.loo.trafficwatch.ui.LineChart
@@ -102,6 +106,7 @@ import com.loo.trafficwatch.ui.TrafficUiState
 import com.loo.trafficwatch.ui.TrafficViewModel
 import com.loo.trafficwatch.ui.TreemapChart
 import com.loo.trafficwatch.ui.TimeChartStyle
+import com.loo.trafficwatch.ui.formatAxisTime
 import com.loo.trafficwatch.ui.formatBytes
 import com.loo.trafficwatch.ui.formatMonth
 import com.loo.trafficwatch.ui.formatShortTime
@@ -133,7 +138,7 @@ class MainActivity : ComponentActivity() {
             TrafficTheme {
                 TrafficApp(
                     state = state,
-                    onRefresh = viewModel::refresh,
+                    onRefresh = viewModel::manualRefresh,
                     onOpenUsageSettings = {
                         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                     },
@@ -210,6 +215,7 @@ private fun TrafficApp(
     )
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val coroutineScope = rememberCoroutineScope()
+    var showLogs by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -221,8 +227,18 @@ private fun TrafficApp(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onRefresh) {
-                        Icon(Icons.Rounded.RefreshIcon, contentDescription = "刷新")
+                    IconButton(onClick = { showLogs = true }) {
+                        Icon(Icons.AutoMirrored.Rounded.ListIcon, contentDescription = "日志")
+                    }
+                    IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
+                        if (state.isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(Icons.Rounded.RefreshIcon, contentDescription = "刷新")
+                        }
                     }
                 },
             )
@@ -280,6 +296,65 @@ private fun TrafficApp(
             }
         }
     }
+
+    if (showLogs) {
+        LogDialog(
+            logs = state.logs,
+            onDismiss = { showLogs = false },
+        )
+    }
+}
+
+@Composable
+private fun LogDialog(
+    logs: List<TrafficLogEntry>,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("刷新日志") },
+        text = {
+            if (logs.isEmpty()) {
+                Text("暂无日志。点击右上角刷新后，这里会显示采样结果。")
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    logs.forEach { log ->
+                        Row(verticalAlignment = Alignment.Top) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 5.dp)
+                                    .size(9.dp)
+                                    .background(logLevelColor(log.level), RoundedCornerShape(50)),
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = formatAxisTime(log.timestampMillis),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    text = log.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        },
+    )
 }
 
 @Composable
@@ -363,7 +438,7 @@ private fun AppsTab(
                 selected = selectedMode == 1,
                 onClick = { if (selectedApp != null) selectedMode = 1 },
                 enabled = selectedApp != null,
-                text = { Text("折线") },
+                text = { Text("柱状") },
             )
         }
 
@@ -521,7 +596,7 @@ private fun AppSeriesPanel(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "${row.label} 流量趋势",
+                    text = "${row.label} 流量柱状图",
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -991,6 +1066,13 @@ private fun categoryColor(category: TrafficCategory): Color = when (category) {
     TrafficCategory.SYSTEM -> Color(0xFF8A8E91)
     TrafficCategory.UNKNOWN -> Color(0xFF6256A7)
     TrafficCategory.APP -> Color(0xFF1B7F79)
+}
+
+private fun logLevelColor(level: TrafficLogLevel): Color = when (level) {
+    TrafficLogLevel.SUCCESS -> Color(0xFF1B7F79)
+    TrafficLogLevel.INFO -> Color(0xFF2F80C0)
+    TrafficLogLevel.WARNING -> Color(0xFFE0A928)
+    TrafficLogLevel.ERROR -> Color(0xFFD46A4C)
 }
 
 private data class TabSpec(

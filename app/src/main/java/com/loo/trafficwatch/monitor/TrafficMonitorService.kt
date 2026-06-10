@@ -14,25 +14,20 @@ import androidx.core.app.NotificationCompat
 import com.loo.trafficwatch.MainActivity
 import com.loo.trafficwatch.R
 import com.loo.trafficwatch.data.SettingsRepository
-import com.loo.trafficwatch.data.TrafficDatabase
 import com.loo.trafficwatch.widget.TrafficWidgetProvider
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
 class TrafficMonitorService : Service() {
-    private lateinit var database: TrafficDatabase
     private lateinit var settings: SettingsRepository
-    private lateinit var reader: NetworkStatsReader
-    private lateinit var subscriptionResolver: SubscriptionResolver
+    private lateinit var sampler: TrafficSampler
     private var executor: ScheduledExecutorService? = null
 
     override fun onCreate() {
         super.onCreate()
-        database = TrafficDatabase(this)
         settings = SettingsRepository(this)
-        reader = NetworkStatsReader(this)
-        subscriptionResolver = SubscriptionResolver(this, settings)
+        sampler = TrafficSampler(this)
         ensureNotificationChannel()
     }
 
@@ -55,6 +50,7 @@ class TrafficMonitorService : Service() {
 
     override fun onDestroy() {
         stopMonitoring()
+        sampler.close()
         super.onDestroy()
     }
 
@@ -62,7 +58,9 @@ class TrafficMonitorService : Service() {
 
     private fun startMonitoring() {
         if (executor != null) return
-        settings.lastSampleAtMillis = System.currentTimeMillis()
+        if (settings.lastSampleAtMillis <= 0L) {
+            settings.lastSampleAtMillis = System.currentTimeMillis()
+        }
         executor = Executors.newSingleThreadScheduledExecutor().also { scheduler ->
             scheduler.scheduleAtFixedRate(
                 { sampleOnce() },
@@ -82,22 +80,12 @@ class TrafficMonitorService : Service() {
     private fun sampleOnce() {
         if (!settings.monitoringEnabled) return
         withShortWakeLock {
-            val now = System.currentTimeMillis()
-            val previous = settings.lastSampleAtMillis.takeIf { it > 0L } ?: now
-            val start = if (now - previous > MAX_BACKFILL_MILLIS) now - SAMPLE_INTERVAL_MILLIS else previous
-            val slot = subscriptionResolver.currentDataSlot()
-
-            val samples = reader.readMobileAppUsage(start, now, slot)
-            database.insertSamples(samples)
-            settings.lastSampleAtMillis = now
-
-            val total = samples.sumOf { it.totalBytes }
-            val message = if (total > 0L) {
-                "本分钟 ${formatBytes(total)} · ${subscriptionResolver.activeSlotName()}"
-            } else {
-                "本分钟无蜂窝流量 · ${subscriptionResolver.activeSlotName()}"
-            }
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(message))
+            val result = sampler.sampleNow(
+                source = SampleSource.SCHEDULED,
+                requireMonitoringEnabled = true,
+                writeSuccessLog = false,
+            )
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(result.message))
             TrafficWidgetProvider.refresh(this)
         }
     }
@@ -164,7 +152,6 @@ class TrafficMonitorService : Service() {
         private const val CHANNEL_ID = "traffic_watch_monitor"
         private const val NOTIFICATION_ID = 1106
         private const val SAMPLE_INTERVAL_MILLIS = 60_000L
-        private const val MAX_BACKFILL_MILLIS = 5 * 60_000L
         private const val WAKE_LOCK_TIMEOUT_MILLIS = 20_000L
 
         fun start(context: Context): Boolean {

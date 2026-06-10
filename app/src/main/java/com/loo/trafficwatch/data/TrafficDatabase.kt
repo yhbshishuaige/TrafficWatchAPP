@@ -35,6 +35,7 @@ class TrafficDatabase(context: Context) : SQLiteOpenHelper(
         db.execSQL("CREATE INDEX idx_samples_time ON traffic_samples(window_start, window_end)")
         db.execSQL("CREATE INDEX idx_samples_uid_time ON traffic_samples(uid, window_start)")
         db.execSQL("CREATE INDEX idx_samples_sim_time ON traffic_samples(sim_slot, window_start)")
+        createLogsTable(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -43,6 +44,9 @@ class TrafficDatabase(context: Context) : SQLiteOpenHelper(
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_samples_time ON traffic_samples(window_start, window_end)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_samples_uid_time ON traffic_samples(uid, window_start)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_samples_sim_time ON traffic_samples(sim_slot, window_start)")
+        if (oldVersion < 2) {
+            createLogsTable(db)
+        }
     }
 
     override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -55,6 +59,32 @@ class TrafficDatabase(context: Context) : SQLiteOpenHelper(
             samples.forEach { sample ->
                 insert(TABLE_SAMPLES, null, sample.toValues())
             }
+        }
+    }
+
+    fun insertLog(level: TrafficLogLevel, message: String, timestampMillis: Long = System.currentTimeMillis()) {
+        writableDatabase.insert(TABLE_LOGS, null, ContentValues().apply {
+            put("timestamp", timestampMillis)
+            put("level", level.name)
+            put("message", message)
+        })
+        trimLogs()
+    }
+
+    fun recentLogs(limit: Int = 80): List<TrafficLogEntry> {
+        val sql = """
+            SELECT id, timestamp, level, message
+            FROM traffic_logs
+            ORDER BY timestamp DESC, id DESC
+            LIMIT ?
+        """.trimIndent()
+        return readableDatabase.rawQuery(sql, arrayOf(limit.toString())).useRows { cursor ->
+            TrafficLogEntry(
+                id = cursor.getLong(0),
+                timestampMillis = cursor.getLong(1),
+                level = runCatching { TrafficLogLevel.valueOf(cursor.getString(2)) }.getOrDefault(TrafficLogLevel.INFO),
+                message = cursor.getString(3),
+            )
         }
     }
 
@@ -221,6 +251,34 @@ class TrafficDatabase(context: Context) : SQLiteOpenHelper(
 
     fun clearAll() {
         writableDatabase.delete(TABLE_SAMPLES, null, null)
+        writableDatabase.delete(TABLE_LOGS, null, null)
+    }
+
+    private fun trimLogs(maxRows: Int = 200) {
+        writableDatabase.execSQL(
+            """
+            DELETE FROM traffic_logs
+            WHERE id NOT IN (
+                SELECT id FROM traffic_logs
+                ORDER BY timestamp DESC, id DESC
+                LIMIT $maxRows
+            )
+            """.trimIndent(),
+        )
+    }
+
+    private fun createLogsTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS traffic_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp INTEGER NOT NULL,
+                level TEXT NOT NULL,
+                message TEXT NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_logs_time ON traffic_logs(timestamp)")
     }
 
     private fun sumBytes(
@@ -267,8 +325,9 @@ class TrafficDatabase(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DATABASE_NAME = "traffic_watch.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
         private const val TABLE_SAMPLES = "traffic_samples"
+        private const val TABLE_LOGS = "traffic_logs"
     }
 }
 

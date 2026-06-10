@@ -4,52 +4,87 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:gravity="center_vertical"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/widget_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Today usage"
-        android:textColor="#5B6165"
-        android:textSize="13sp" />
-
-    <TextView
-        android:id="@+id/widget_today_value"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:text="0B"
-        android:textColor="#1E2326"
-        android:textSize="28sp"
-        android:textStyle="bold" />
-
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
         <TextView
-            android:id="@+id/widget_status"
-            android:layout_width="0dp"
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Paused"
-            android:textColor="#1B7F79"
+            android:text="今日流量"
+            android:textColor="#5B6165"
             android:textSize="13sp" />
 
         <TextView
+            android:id="@+id/widget_today_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="0B"
+            android:textColor="#1E2326"
+            android:textSize="25sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_month_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="本月 0B"
+            android:textColor="#5B6165"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_top_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="暂无应用数据"
+            android:textColor="#5B6165"
+            android:textSize="12sp" />
+
+        <TextView
             android:id="@+id/widget_toggle"
-            android:layout_width="72dp"
-            android:layout_height="36dp"
+            android:layout_width="76dp"
+            android:layout_height="34dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/widget_toggle_background"
             android:gravity="center"
-            android:text="Start"
+            android:text="开始"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="104dp"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/widget_pie"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:contentDescription="本月占比"
+            android:scaleType="centerInside" />
+
+        <TextView
+            android:id="@+id/widget_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="已暂停"
+            android:textColor="#1B7F79"
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>
