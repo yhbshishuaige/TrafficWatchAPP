@@ -96,3 +96,29 @@
 - 主版本号变化意味着大更新，可能会出现不兼容的情况
 - 此版本号变化一般是添加新功能
 - 修订版本号变化一般是优化细节
+
+## 更新
+
+- 增加一个简洁开屏动画
+
+<p align="center">
+  <a href="./img/opening.jpg">
+    <img src="./img/opening.jpg" width="320" alt="开屏动画">
+  </a>
+</p>
+
+  - 不喜欢可以在设置里面关掉
+
+<p align="center">
+  <a href="./img/setting.jpg">
+    <img src="./img/setting.jpg" width="320" alt="设置说明">
+  </a>
+</p>
+
+- 添加日志功能
+
+<p align="center">
+  <a href="./img/log.jpg">
+    <img src="./img/log.jpg" width="320" alt="日志">
+  </a>
+</p>

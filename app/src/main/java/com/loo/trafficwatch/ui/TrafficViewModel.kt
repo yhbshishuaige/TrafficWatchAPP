@@ -42,6 +42,7 @@ data class TrafficUiState(
     val monthly: List<SeriesPoint> = emptyList(),
     val logs: List<TrafficLogEntry> = emptyList(),
     val isRefreshing: Boolean = false,
+    val splashAnimationEnabled: Boolean = true,
 )
 
 class TrafficViewModel(application: Application) : AndroidViewModel(application) {
@@ -105,6 +106,7 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
             monthly = database.monthlySeries(yearStart, now),
             logs = database.recentLogs(),
             isRefreshing = isRefreshing,
+            splashAnimationEnabled = settings.splashAnimationEnabled,
         )
     }
 
@@ -126,6 +128,11 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
 
     fun setFallbackActiveSlot(slot: Int) {
         settings.fallbackActiveSlot = slot.coerceIn(1, 2)
+        refresh()
+    }
+
+    fun setSplashAnimationEnabled(enabled: Boolean) {
+        settings.splashAnimationEnabled = enabled
         refresh()
     }
 

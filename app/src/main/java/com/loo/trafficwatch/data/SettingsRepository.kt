@@ -18,6 +18,10 @@ class SettingsRepository(context: Context) {
         get() = prefs.getLong(KEY_LAST_SAMPLE_AT, 0L)
         set(value) = prefs.edit { putLong(KEY_LAST_SAMPLE_AT, value) }
 
+    var splashAnimationEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SPLASH_ANIMATION_ENABLED, true)
+        set(value) = prefs.edit { putBoolean(KEY_SPLASH_ANIMATION_ENABLED, value) }
+
     fun getSimProfiles(): List<SimProfile> = listOf(getSimProfile(1), getSimProfile(2))
 
     fun getSimProfile(slot: Int): SimProfile {
@@ -45,5 +49,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_FALLBACK_ACTIVE_SLOT = "fallback_active_slot"
         private const val KEY_LAST_SAMPLE_AT = "last_sample_at"
+        private const val KEY_SPLASH_ANIMATION_ENABLED = "splash_animation_enabled"
     }
 }

@@ -23,8 +23,8 @@ android {
         applicationId = "com.loo.trafficwatch"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.1.4"
+        versionCode = 10
+        versionName = "1.2.0"
     }
 
     signingConfigs {

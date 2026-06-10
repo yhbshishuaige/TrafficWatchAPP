@@ -12,15 +12,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -82,11 +86,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -136,56 +145,67 @@ class MainActivity : ComponentActivity() {
             }
 
             TrafficTheme {
-                TrafficApp(
-                    state = state,
-                    onRefresh = viewModel::manualRefresh,
-                    onOpenUsageSettings = {
-                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                    },
-                    onRequestNotifications = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                    onRequestPhoneState = {
-                        phoneStateLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-                    },
-                    onRequestBatteryOptimization = {
-                        val packageUri = Uri.parse("package:$packageName")
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri)
-                        } else {
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
-                        }
-                        try {
-                            startActivity(intent)
-                        } catch (_: ActivityNotFoundException) {
-                            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                        }
-                    },
-                    onMonitoringChange = { enabled ->
-                        if (enabled && !state.hasUsageAccess) {
+                var showSplash by rememberSaveable { mutableStateOf(state.splashAnimationEnabled) }
+                Box(Modifier.fillMaxSize()) {
+                    TrafficApp(
+                        state = state,
+                        onRefresh = viewModel::manualRefresh,
+                        onOpenUsageSettings = {
                             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                        } else {
-                            if (enabled && !state.hasNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        },
+                        onRequestNotifications = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else if (enabled && !state.hasPhoneState) {
-                                phoneStateLauncher.launch(Manifest.permission.READ_PHONE_STATE)
                             }
-                            viewModel.setMonitoringEnabled(enabled)
-                        }
-                    },
-                    loadAppSeries = viewModel::appSeries,
-                    onSaveSimProfile = viewModel::saveSimProfile,
-                    onFallbackSlotChange = viewModel::setFallbackActiveSlot,
-                    onClearAllData = viewModel::clearAllData,
-                    onOpenAppSettings = {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        startActivity(intent)
-                    },
-                )
+                        },
+                        onRequestPhoneState = {
+                            phoneStateLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                        },
+                        onRequestBatteryOptimization = {
+                            val packageUri = Uri.parse("package:$packageName")
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri)
+                            } else {
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
+                            }
+                            try {
+                                startActivity(intent)
+                            } catch (_: ActivityNotFoundException) {
+                                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                            }
+                        },
+                        onMonitoringChange = { enabled ->
+                            if (enabled && !state.hasUsageAccess) {
+                                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            } else {
+                                if (enabled && !state.hasNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else if (enabled && !state.hasPhoneState) {
+                                    phoneStateLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                                }
+                                viewModel.setMonitoringEnabled(enabled)
+                            }
+                        },
+                        loadAppSeries = viewModel::appSeries,
+                        onSaveSimProfile = viewModel::saveSimProfile,
+                        onFallbackSlotChange = viewModel::setFallbackActiveSlot,
+                        onSplashAnimationChange = viewModel::setSplashAnimationEnabled,
+                        onClearAllData = viewModel::clearAllData,
+                        onOpenAppSettings = {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            startActivity(intent)
+                        },
+                    )
+                    AnimatedVisibility(
+                        visible = showSplash,
+                        enter = fadeIn(tween(120)),
+                        exit = fadeOut(tween(260)) + scaleOut(tween(260), targetScale = 0.98f),
+                    ) {
+                        TrafficSplashOverlay(onFinished = { showSplash = false })
+                    }
+                }
             }
         }
     }
@@ -204,6 +224,7 @@ private fun TrafficApp(
     loadAppSeries: (Int, AppSeriesRange) -> List<com.loo.trafficwatch.data.SeriesPoint>,
     onSaveSimProfile: (SimProfile) -> Unit,
     onFallbackSlotChange: (Int) -> Unit,
+    onSplashAnimationChange: (Boolean) -> Unit,
     onClearAllData: () -> Unit,
     onOpenAppSettings: () -> Unit,
 ) {
@@ -289,6 +310,7 @@ private fun TrafficApp(
                         onRequestBatteryOptimization = onRequestBatteryOptimization,
                         onSaveSimProfile = onSaveSimProfile,
                         onFallbackSlotChange = onFallbackSlotChange,
+                        onSplashAnimationChange = onSplashAnimationChange,
                         onClearAllData = onClearAllData,
                         onOpenAppSettings = onOpenAppSettings,
                     )
@@ -355,6 +377,126 @@ private fun LogDialog(
             }
         },
     )
+}
+
+@Composable
+private fun TrafficSplashOverlay(onFinished: () -> Unit) {
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        started = true
+        delay(1_850)
+        onFinished()
+    }
+    val progress by animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = tween(durationMillis = 1_450, easing = FastOutSlowInEasing),
+        label = "splash-progress",
+    )
+    val glow by animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+        label = "splash-glow",
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FBFA)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(156.dp)
+                    .background(Color.White, RoundedCornerShape(30.dp))
+                    .padding(18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val card = Size(size.width, size.height)
+                    val baseY = card.height * 0.78f
+                    val barWidth = card.width * 0.13f
+                    val barGap = card.width * 0.09f
+                    val startX = card.width * 0.18f
+                    val heights = listOf(0.38f, 0.58f, 0.76f)
+                    val colors = listOf(Color(0xFF35C9B6), Color(0xFF1DB2D5), Color(0xFF22C777))
+
+                    drawRoundRect(
+                        color = Color(0xFFE9F7F4),
+                        topLeft = Offset(0f, 0f),
+                        size = card,
+                        cornerRadius = CornerRadius(24f, 24f),
+                    )
+                    drawRoundRect(
+                        color = Color(0xFFCFF3EC).copy(alpha = 0.72f + glow * 0.18f),
+                        topLeft = Offset(card.width * 0.08f, card.height * 0.09f),
+                        size = Size(card.width * 0.84f, card.height * 0.76f),
+                        cornerRadius = CornerRadius(22f, 22f),
+                    )
+
+                    heights.forEachIndexed { index, heightRatio ->
+                        val localProgress = ((progress - index * 0.14f) / 0.62f).coerceIn(0f, 1f)
+                        val barHeight = card.height * heightRatio * localProgress
+                        val x = startX + index * (barWidth + barGap)
+                        drawRoundRect(
+                            color = colors[index],
+                            topLeft = Offset(x, baseY - barHeight),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = CornerRadius(9f, 9f),
+                        )
+                    }
+
+                    val points = listOf(
+                        Offset(card.width * 0.15f, card.height * 0.47f),
+                        Offset(card.width * 0.30f, card.height * 0.38f),
+                        Offset(card.width * 0.45f, card.height * 0.45f),
+                        Offset(card.width * 0.63f, card.height * 0.26f),
+                        Offset(card.width * 0.80f, card.height * 0.34f),
+                    )
+                    val segmentCount = points.lastIndex
+                    repeat(segmentCount) { index ->
+                        val segmentStart = index / segmentCount.toFloat()
+                        val segmentProgress = ((progress - segmentStart * 0.46f) / 0.38f).coerceIn(0f, 1f)
+                        if (segmentProgress > 0f) {
+                            val start = points[index]
+                            val end = points[index + 1]
+                            val current = Offset(
+                                x = start.x + (end.x - start.x) * segmentProgress,
+                                y = start.y + (end.y - start.y) * segmentProgress,
+                            )
+                            drawLine(
+                                color = Color(0xFF0F8F82),
+                                start = start,
+                                end = current,
+                                strokeWidth = 7f,
+                                cap = StrokeCap.Round,
+                            )
+                        }
+                    }
+                    points.forEachIndexed { index, point ->
+                        val dotProgress = ((progress - index * 0.11f) / 0.55f).coerceIn(0f, 1f)
+                        if (dotProgress > 0f) {
+                            drawCircle(Color.White, radius = 8.5f * dotProgress, center = point)
+                            drawCircle(Color(0xFF0F8F82), radius = 4.4f * dotProgress, center = point)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Text(
+                text = "Traffic Monitoring",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E2326),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "正在同步流量视图",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF5B6165),
+            )
+        }
+    }
 }
 
 @Composable
@@ -634,6 +776,7 @@ private fun SettingsTab(
     onRequestBatteryOptimization: () -> Unit,
     onSaveSimProfile: (SimProfile) -> Unit,
     onFallbackSlotChange: (Int) -> Unit,
+    onSplashAnimationChange: (Boolean) -> Unit,
     onClearAllData: () -> Unit,
     onOpenAppSettings: () -> Unit,
 ) {
@@ -700,6 +843,24 @@ private fun SettingsTab(
                     Spacer(Modifier.width(6.dp))
                     Text("打开")
                 }
+            }
+        }
+
+        SectionHeader("体验", Icons.Rounded.SettingsIcon)
+        CardBlock {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("开屏动画", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "启动时显示柱状图和折线图动画",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = state.splashAnimationEnabled,
+                    onCheckedChange = onSplashAnimationChange,
+                )
             }
         }
 
