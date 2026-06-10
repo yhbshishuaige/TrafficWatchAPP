@@ -19,6 +19,9 @@ import com.loo.trafficwatch.monitor.SampleSource
 import com.loo.trafficwatch.monitor.SubscriptionResolver
 import com.loo.trafficwatch.monitor.TrafficMonitorService
 import com.loo.trafficwatch.monitor.TrafficSampler
+import com.loo.trafficwatch.surprise.BadgeUnlock
+import com.loo.trafficwatch.surprise.SurpriseRepository
+import com.loo.trafficwatch.surprise.SurpriseUiState
 import com.loo.trafficwatch.widget.TrafficWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,6 +46,7 @@ data class TrafficUiState(
     val logs: List<TrafficLogEntry> = emptyList(),
     val isRefreshing: Boolean = false,
     val splashAnimationEnabled: Boolean = true,
+    val surprise: SurpriseUiState = SurpriseUiState(),
 )
 
 class TrafficViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,6 +55,7 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
     private val database = TrafficDatabase(application)
     private val subscriptionResolver = SubscriptionResolver(application, settings)
     private val sampler = TrafficSampler(application)
+    private val surprises = SurpriseRepository(application)
 
     var uiState by mutableStateOf(TrafficUiState())
         private set
@@ -90,8 +95,15 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
         val hourAgo = now - ONE_HOUR
         val weekAgo = now - SEVEN_DAYS
 
+        val monitoringEnabled = settings.monitoringEnabled
+        val stats = database.dashboardStats(now)
+        val usageRows = database.usageRows(monthStart, now, limit = 24)
+        val lastHour = database.series(hourAgo, now, ONE_MINUTE)
+        val lastWeek = database.series(weekAgo, now, ONE_HOUR)
+        val monthly = database.monthlySeries(yearStart, now)
+
         uiState = TrafficUiState(
-            monitoringEnabled = settings.monitoringEnabled,
+            monitoringEnabled = monitoringEnabled,
             hasUsageAccess = PermissionUtils.hasUsageAccess(app),
             hasPhoneState = PermissionUtils.hasPhoneState(app),
             hasNotifications = PermissionUtils.hasNotifications(app),
@@ -99,14 +111,22 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
             fallbackActiveSlot = settings.fallbackActiveSlot,
             activeSlotName = subscriptionResolver.activeSlotName(),
             simProfiles = settings.getSimProfiles(),
-            stats = database.dashboardStats(now),
-            usageRows = database.usageRows(monthStart, now, limit = 24),
-            lastHour = database.series(hourAgo, now, ONE_MINUTE),
-            lastWeek = database.series(weekAgo, now, ONE_HOUR),
-            monthly = database.monthlySeries(yearStart, now),
+            stats = stats,
+            usageRows = usageRows,
+            lastHour = lastHour,
+            lastWeek = lastWeek,
+            monthly = monthly,
             logs = database.recentLogs(),
             isRefreshing = isRefreshing,
             splashAnimationEnabled = settings.splashAnimationEnabled,
+            surprise = surprises.state(
+                stats = stats,
+                usageRows = usageRows,
+                lastWeek = lastWeek,
+                monthly = monthly,
+                monitoringEnabled = monitoringEnabled,
+                nowMillis = now,
+            ),
         )
     }
 
@@ -142,6 +162,22 @@ class TrafficViewModel(application: Application) : AndroidViewModel(application)
         TrafficWidgetProvider.refresh(app)
         refresh()
     }
+
+    fun recordTitleTap(): BadgeUnlock? =
+        surprises.recordTitleTap().also { refresh() }
+
+    fun recordHiddenQuoteSeen(): BadgeUnlock? =
+        surprises.recordHiddenQuoteSeen().also { refresh() }
+
+    fun recordAppFocus(row: UsageRow): BadgeUnlock? =
+        surprises.recordAppFocus(row, uiState.stats.monthBytes).also {
+            if (it != null) refresh()
+        }
+
+    fun recordSurpriseVisit(): BadgeUnlock? =
+        surprises.recordSurpriseVisit().also {
+            if (it != null) refresh()
+        }
 
     fun appSeries(uid: Int, range: AppSeriesRange): List<SeriesPoint> {
         val now = System.currentTimeMillis()

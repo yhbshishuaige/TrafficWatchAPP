@@ -48,6 +48,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List as ListIcon
 import androidx.compose.material.icons.rounded.BarChart as BarChartIcon
+import androidx.compose.material.icons.rounded.AutoAwesome as AutoAwesomeIcon
+import androidx.compose.material.icons.rounded.EmojiEvents as EmojiEventsIcon
+import androidx.compose.material.icons.rounded.Favorite as FavoriteIcon
+import androidx.compose.material.icons.rounded.Lock as LockIcon
 import androidx.compose.material.icons.rounded.Delete as DeleteIcon
 import androidx.compose.material.icons.rounded.Remove as RemoveIcon
 import androidx.compose.material.icons.rounded.PieChart as PieChartIcon
@@ -107,6 +111,12 @@ import com.loo.trafficwatch.data.TrafficCategory
 import com.loo.trafficwatch.data.TrafficLogEntry
 import com.loo.trafficwatch.data.TrafficLogLevel
 import com.loo.trafficwatch.data.UsageRow
+import com.loo.trafficwatch.surprise.BadgeKind
+import com.loo.trafficwatch.surprise.BadgeState
+import com.loo.trafficwatch.surprise.BadgeUnlock
+import com.loo.trafficwatch.surprise.FlowPersonality
+import com.loo.trafficwatch.surprise.SpecialMoment
+import com.loo.trafficwatch.surprise.SurpriseUiState
 import com.loo.trafficwatch.ui.AppSeriesRange
 import com.loo.trafficwatch.ui.LineChart
 import com.loo.trafficwatch.ui.PieChart
@@ -187,6 +197,10 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         loadAppSeries = viewModel::appSeries,
+                        onTitleTap = viewModel::recordTitleTap,
+                        onHiddenQuoteSeen = viewModel::recordHiddenQuoteSeen,
+                        onAppFocus = viewModel::recordAppFocus,
+                        onSurpriseVisit = viewModel::recordSurpriseVisit,
                         onSaveSimProfile = viewModel::saveSimProfile,
                         onFallbackSlotChange = viewModel::setFallbackActiveSlot,
                         onSplashAnimationChange = viewModel::setSplashAnimationEnabled,
@@ -222,6 +236,10 @@ private fun TrafficApp(
     onRequestBatteryOptimization: () -> Unit,
     onMonitoringChange: (Boolean) -> Unit,
     loadAppSeries: (Int, AppSeriesRange) -> List<com.loo.trafficwatch.data.SeriesPoint>,
+    onTitleTap: () -> BadgeUnlock?,
+    onHiddenQuoteSeen: () -> BadgeUnlock?,
+    onAppFocus: (UsageRow) -> BadgeUnlock?,
+    onSurpriseVisit: () -> BadgeUnlock?,
     onSaveSimProfile: (SimProfile) -> Unit,
     onFallbackSlotChange: (Int) -> Unit,
     onSplashAnimationChange: (Boolean) -> Unit,
@@ -232,11 +250,13 @@ private fun TrafficApp(
         TabSpec("总览", Icons.Rounded.PieChartIcon),
         TabSpec("App", Icons.AutoMirrored.Rounded.ListIcon),
         TabSpec("趋势", Icons.Rounded.TimelineIcon),
+        TabSpec("惊喜", Icons.Rounded.AutoAwesomeIcon),
         TabSpec("设置", Icons.Rounded.SettingsIcon),
     )
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val coroutineScope = rememberCoroutineScope()
     var showLogs by remember { mutableStateOf(false) }
+    var badgeUnlock by remember { mutableStateOf<BadgeUnlock?>(null) }
 
     Scaffold(
         topBar = {
@@ -245,6 +265,15 @@ private fun TrafficApp(
                     Text(
                         text = "流量观察",
                         fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            val unlock = onTitleTap()
+                            if (unlock != null) {
+                                badgeUnlock = unlock
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(3)
+                                }
+                            }
+                        },
                     )
                 },
                 actions = {
@@ -300,9 +329,21 @@ private fun TrafficApp(
                     1 -> AppsTab(
                         rows = state.usageRows,
                         loadSeries = loadAppSeries,
+                        onAppFocus = { row ->
+                            onAppFocus(row)?.let { badgeUnlock = it }
+                        },
                     )
                     2 -> TrendsTab(state)
-                    3 -> SettingsTab(
+                    3 -> SurpriseTab(
+                        surprise = state.surprise,
+                        onHiddenQuoteSeen = {
+                            onHiddenQuoteSeen()?.let { badgeUnlock = it }
+                        },
+                        onSurpriseVisit = {
+                            onSurpriseVisit()?.let { badgeUnlock = it }
+                        },
+                    )
+                    4 -> SettingsTab(
                         state = state,
                         onOpenUsageSettings = onOpenUsageSettings,
                         onRequestNotifications = onRequestNotifications,
@@ -323,6 +364,13 @@ private fun TrafficApp(
         LogDialog(
             logs = state.logs,
             onDismiss = { showLogs = false },
+        )
+    }
+
+    badgeUnlock?.let { unlock ->
+        BadgeUnlockDialog(
+            unlock = unlock,
+            onDismiss = { badgeUnlock = null },
         )
     }
 }
@@ -374,6 +422,30 @@ private fun LogDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("关闭")
+            }
+        },
+    )
+}
+
+@Composable
+private fun BadgeUnlockDialog(
+    unlock: BadgeUnlock,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Rounded.EmojiEventsIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        title = { Text("获得徽章：${unlock.title}") },
+        text = { Text(unlock.message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("收下")
             }
         },
     )
@@ -563,6 +635,7 @@ private fun OverviewTab(
 private fun AppsTab(
     rows: List<UsageRow>,
     loadSeries: (Int, AppSeriesRange) -> List<com.loo.trafficwatch.data.SeriesPoint>,
+    onAppFocus: (UsageRow) -> Unit,
 ) {
     var selectedMode by remember { mutableIntStateOf(0) }
     var selectedApp by remember { mutableStateOf<UsageRow?>(null) }
@@ -597,6 +670,7 @@ private fun AppsTab(
                 AppListPanel(
                     rows = rows,
                     onAppClick = { row ->
+                        onAppFocus(row)
                         selectedApp = row
                         selectedMode = 1
                     },
@@ -657,6 +731,262 @@ private fun TrendsTab(state: TrafficUiState) {
 
         SectionHeader("最近十二个月", Icons.Rounded.BarChartIcon)
         MonthlyBars(state.monthly)
+    }
+}
+
+@Composable
+private fun SurpriseTab(
+    surprise: SurpriseUiState,
+    onHiddenQuoteSeen: () -> Unit,
+    onSurpriseVisit: () -> Unit,
+) {
+    LaunchedEffect(Unit) {
+        onSurpriseVisit()
+    }
+
+    ScreenColumn {
+        surprise.specialMoment?.let { moment ->
+            SpecialMomentCard(moment)
+        }
+
+        SectionHeader("省流人格", Icons.Rounded.FavoriteIcon)
+        PersonalityCard(
+            title = "本周",
+            personality = surprise.weeklyPersonality,
+        )
+        PersonalityCard(
+            title = "本月",
+            personality = surprise.monthlyPersonality,
+        )
+
+        if (surprise.hiddenRoomUnlocked) {
+            SectionHeader("隐藏房间", Icons.Rounded.AutoAwesomeIcon)
+            HiddenRoomCard(
+                surprise = surprise,
+                onNextQuote = onHiddenQuoteSeen,
+            )
+        } else {
+            LockedRoomHint()
+        }
+
+        SectionHeader("徽章墙", Icons.Rounded.EmojiEventsIcon)
+        BadgeProgressCard(surprise)
+        BadgeSection(
+            title = "普通徽章",
+            badges = surprise.badges.filter { it.definition.kind == BadgeKind.NORMAL },
+        )
+        BadgeSection(
+            title = "彩蛋徽章",
+            badges = surprise.badges.filter { it.definition.kind == BadgeKind.EASTER_EGG },
+        )
+    }
+}
+
+@Composable
+private fun SpecialMomentCard(moment: SpecialMoment) {
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(Color(0xFFD46A4C), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.AutoAwesomeIcon,
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(moment.title, fontWeight = FontWeight.Bold)
+                Text(
+                    text = moment.sparkleText,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(moment.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PersonalityCard(
+    title: String,
+    personality: FlowPersonality,
+) {
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(personality.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            }
+            Text(
+                text = personality.highlight,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(personality.subtitle, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text(personality.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun HiddenRoomCard(
+    surprise: SurpriseUiState,
+    onNextQuote: () -> Unit,
+) {
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Rounded.AutoAwesomeIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("第 ${surprise.quoteViews + 1} 句", fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = surprise.quote.text,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = surprise.quote.footnote,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(onClick = onNextQuote, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Rounded.FavoriteIcon, contentDescription = null, Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("再看一句")
+        }
+    }
+}
+
+@Composable
+private fun LockedRoomHint() {
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Rounded.LockIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text("有一间还没打开的小房间", fontWeight = FontWeight.Bold)
+                Text(
+                    text = "它不在说明书里，但它一直在等一个足够好奇的人。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BadgeProgressCard(surprise: SurpriseUiState) {
+    val total = surprise.badges.size.coerceAtLeast(1)
+    val unlocked = surprise.badges.count { it.unlocked }
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("已获得 $unlocked / $total", fontWeight = FontWeight.Bold)
+                Text(
+                    text = "普通 ${surprise.unlockedNormalCount}/${surprise.normalCount} · 彩蛋 ${surprise.unlockedEasterEggCount}/${surprise.easterEggCount}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Icon(
+                Icons.Rounded.EmojiEventsIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        LinearProgressIndicator(
+            progress = { unlocked.toFloat() / total.toFloat() },
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun BadgeSection(
+    title: String,
+    badges: List<BadgeState>,
+) {
+    Text(
+        text = title,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+    badges.forEach { badge ->
+        BadgeCard(badge)
+    }
+}
+
+@Composable
+private fun BadgeCard(badge: BadgeState) {
+    val isSecretLocked = badge.definition.kind == BadgeKind.EASTER_EGG && !badge.unlocked
+    val iconColor = when {
+        badge.unlocked && badge.definition.kind == BadgeKind.EASTER_EGG -> Color(0xFFD46A4C)
+        badge.unlocked -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
+    }
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(iconColor.copy(alpha = if (badge.unlocked) 1f else 0.22f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (badge.unlocked) Icons.Rounded.EmojiEventsIcon else Icons.Rounded.LockIcon,
+                    contentDescription = null,
+                    tint = if (badge.unlocked) Color.White else iconColor,
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = if (isSecretLocked) "未发现的惊喜" else badge.definition.title,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (isSecretLocked) {
+                        "某个温柔时刻会把它点亮。"
+                    } else if (badge.unlocked) {
+                        badge.definition.description
+                    } else {
+                        badge.definition.requirement
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }
 
