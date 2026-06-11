@@ -69,7 +69,7 @@ data class SurpriseUiState(
     val monthlyPersonality: FlowPersonality = FlowPersonality(
         title = "月光待机型",
         subtitle = "这个月还很安静",
-        body = "数据正在慢慢变成故事，等它多一点，惊喜也会更准一点。",
+        body = "数据正在慢慢变成故事。再多一点点，就能看出更像你的节奏。",
         highlight = "暂无月数据",
     ),
     val specialMoment: SpecialMoment? = null,
@@ -538,7 +538,7 @@ private object BadgeCatalog {
         BadgeDefinition(
             id = "friday_breeze",
             title = "周五晚风",
-            description = "周五夜晚打开惊喜页，像给这周按下一个轻轻的句号。",
+            description = "周五夜晚来到这里，像给这周按下一个轻轻的句号。",
             requirement = "？？？",
             kind = BadgeKind.EASTER_EGG,
         ),
@@ -552,7 +552,7 @@ private object BadgeCatalog {
         BadgeDefinition(
             id = "night_listener",
             title = "夜里也有人听见",
-            description = "深夜打开惊喜页时，流量观察给你留了一盏小灯。",
+            description = "深夜来到这里时，流量观察给你留了一盏小灯。",
             requirement = "？？？",
             kind = BadgeKind.EASTER_EGG,
         ),

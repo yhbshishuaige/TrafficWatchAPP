@@ -250,7 +250,7 @@ private fun TrafficApp(
         TabSpec("总览", Icons.Rounded.PieChartIcon),
         TabSpec("App", Icons.AutoMirrored.Rounded.ListIcon),
         TabSpec("趋势", Icons.Rounded.TimelineIcon),
-        TabSpec("惊喜", Icons.Rounded.AutoAwesomeIcon),
+        TabSpec("足迹", Icons.Rounded.AutoAwesomeIcon),
         TabSpec("设置", Icons.Rounded.SettingsIcon),
     )
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -772,11 +772,11 @@ private fun SurpriseTab(
         SectionHeader("徽章墙", Icons.Rounded.EmojiEventsIcon)
         BadgeProgressCard(surprise)
         BadgeSection(
-            title = "普通徽章",
+            title = "看得见的徽章",
             badges = surprise.badges.filter { it.definition.kind == BadgeKind.NORMAL },
         )
         BadgeSection(
-            title = "彩蛋徽章",
+            title = "藏起来的徽章",
             badges = surprise.badges.filter { it.definition.kind == BadgeKind.EASTER_EGG },
         )
     }
@@ -906,7 +906,7 @@ private fun BadgeProgressCard(surprise: SurpriseUiState) {
             Column(Modifier.weight(1f)) {
                 Text("已获得 $unlocked / $total", fontWeight = FontWeight.Bold)
                 Text(
-                    text = "普通 ${surprise.unlockedNormalCount}/${surprise.normalCount} · 彩蛋 ${surprise.unlockedEasterEggCount}/${surprise.easterEggCount}",
+                    text = "明面上 ${surprise.unlockedNormalCount}/${surprise.normalCount} · 悄悄藏着 ${surprise.unlockedEasterEggCount}/${surprise.easterEggCount}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -969,14 +969,14 @@ private fun BadgeCard(badge: BadgeState) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = if (isSecretLocked) "未发现的惊喜" else badge.definition.title,
+                    text = if (isSecretLocked) "还藏着一枚徽章" else badge.definition.title,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = if (isSecretLocked) {
-                        "某个温柔时刻会把它点亮。"
+                        "等到刚好的时刻，它会自己亮起来。"
                     } else if (badge.unlocked) {
                         badge.definition.description
                     } else {
