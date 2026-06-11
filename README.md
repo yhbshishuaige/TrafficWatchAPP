@@ -123,3 +123,28 @@
     <img src="./img/log.jpg" width="320" alt="日志">
   </a>
 </p>
+
+- 新增足迹功能，总有被看见的一天，成为有趣的app
+
+<p align="center">
+  <a href="./img/足迹1.jpg">
+    <img src="./img/足迹1.jpg" width="320" alt="足迹">
+  </a>
+</p>
+
+- 徽章
+
+<p align="center">
+  <a href="./img/足迹2.jpg">
+    <img src="./img/足迹2.jpg" width="320" alt="足迹">
+  </a>
+</p>
+
+
+- 隐藏徽章，只给独特的人
+
+<p align="center">
+  <a href="./img/足迹3.jpg">
+    <img src="./img/足迹3.jpg" width="320" alt="足迹">
+  </a>
+</p>
